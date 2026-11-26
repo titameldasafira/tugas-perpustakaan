@@ -8,7 +8,7 @@ Kelas : TI-2C
 
 // PHP 8.1+ secara bawaan melempar exception bila koneksi gagal.
 // Baris ini mematikannya agar kesalahan dapat diperiksa dengan if.
-mysqli_report(MYSQLI_REPORT_ERROR);
+mysqli_report(MYSQLI_REPORT_OFF);
 
 // Parameter koneksi
 $host = "localhost";
@@ -22,8 +22,6 @@ $koneksi = mysqli_connect($host, $username, $password, $database);
 // Memeriksa koneksi
 if (!$koneksi) {
     die("Koneksi gagal: " . htmlspecialchars(mysqli_connect_error()));
-} else {
-    echo "Koneksi berhasil";
 }
 
 // Mengatur karakter agar huruf dan simbol tersimpan dengan benar
