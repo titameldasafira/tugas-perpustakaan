@@ -4,8 +4,7 @@ Nama  : Tita Melda Safira
 NIM   : 250102095
 Kelas : TI-2C
 */
-
-session_start();
+// proses_anggota.php - Memvalidasi data form, lalu menyimpannya dengan INSERT
 
 // Halaman ini hanya boleh dibuka melalui pengiriman form (POST)
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
@@ -21,9 +20,9 @@ $no_hp         = isset($_POST["no_hp"])         ? trim($_POST["no_hp"])         
 $jenis_anggota = isset($_POST["jenis_anggota"]) ? trim($_POST["jenis_anggota"]) : "";
 $alamat        = isset($_POST["alamat"])        ? trim($_POST["alamat"])        : "";
 
-// 2. Validasi di sisi server (Associative array agar muncul di bawah tiap kolom)
-$daftar_jenis = ["Mahasiswa", "Dosen", "Tenaga Kependidikan"];
-$errors       = [];
+// 2. Validasi di sisi server
+$daftar_jenis = array("Mahasiswa", "Dosen", "Tenaga Kependidikan");
+$errors       = array();
 
 // Nomor Anggota: wajib diisi, hanya angka, maksimal 15 digit
 if (empty($no_anggota)) {
@@ -71,52 +70,69 @@ if (empty($alamat)) {
     $errors['alamat'] = "Alamat tidak boleh kosong.";
 }
 
-// 3. Bila semua data valid, hubungkan ke database dan simpan data (INSERT)
+// 3. Bila semua data valid, simpan ke database
+$berhasil = false;
+$pesan_db = "";
+
 if (empty($errors)) {
     require_once "koneksi.php";
 
-    $sql  = "INSERT INTO anggota (no_anggota, nama_lengkap, email, no_hp, jenis_anggota, alamat) VALUES (?, ?, ?, ?, ?, ?)";
+    $sql  = "INSERT INTO anggota (no_anggota, nama_lengkap, email, no_hp, jenis_anggota, alamat) "
+          . "VALUES (?, ?, ?, ?, ?, ?)";
     $stmt = mysqli_prepare($koneksi, $sql);
 
     if ($stmt) {
         mysqli_stmt_bind_param(
-            $stmt,
-            "ssssss",
-            $no_anggota,
-            $nama_lengkap,
-            $email,
-            $no_hp,
-            $jenis_anggota,
-            $alamat
+            $stmt, "ssssss", $no_anggota, $nama_lengkap, $email, $no_hp, $jenis_anggota, $alamat
         );
 
         if (mysqli_stmt_execute($stmt)) {
-            $_SESSION['sukses_data'] = compact(
-                'no_anggota',
-                'nama_lengkap',
-                'email',
-                'no_hp',
-                'jenis_anggota',
-                'alamat'
-            );
+            $berhasil = true;
         } else {
-            $_SESSION['errors'] = ['db' => "Gagal menyimpan ke database: " . mysqli_stmt_error($stmt)];
-            $_SESSION['old']    = compact('no_anggota', 'nama_lengkap', 'email', 'no_hp', 'jenis_anggota', 'alamat');
+            $pesan_db = mysqli_stmt_error($stmt);
         }
-
         mysqli_stmt_close($stmt);
     } else {
-        $_SESSION['errors'] = ['db' => "Terjadi kesalahan pada query database: " . mysqli_error($koneksi)];
-        $_SESSION['old']    = compact('no_anggota', 'nama_lengkap', 'email', 'no_hp', 'jenis_anggota', 'alamat');
+        $pesan_db = mysqli_error($koneksi);
     }
 
     mysqli_close($koneksi);
-} else {
-    // Titipkan pesan error & isian lama ke session agar muncul kembali di form
-    $_SESSION['errors'] = $errors;
-    $_SESSION['old']    = compact('no_anggota', 'nama_lengkap', 'email', 'no_hp', 'jenis_anggota', 'alamat');
-}
 
-// Kembali ke halaman form
-header("Location: form_anggota.php");
-exit;
+    // 4. Bila berhasil, kembali ke form dengan notifikasi
+    if ($berhasil) {
+        header("Location: form_anggota.php?status=sukses");
+        exit;
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasil Penyimpanan Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #1f3864; }
+        .gagal { background: #fdecea; border-left: 5px solid #c0392b; padding: 10px; }
+    </style>
+</head>
+<body>
+    <?php if (!empty($errors)) { ?>
+        <h1>Data Tidak Valid</h1>
+        <p class="gagal">Data belum dapat disimpan. Perbaiki kesalahan:</p>
+        <ul>
+            <?php foreach ($errors as $pesan) { ?>
+                <li><?php echo htmlspecialchars($pesan); ?></li>
+            <?php } ?>
+        </ul>
+    <?php } else { ?>
+        <h1>Data Gagal Disimpan</h1>
+        <p class="gagal">Terjadi kesalahan saat menyimpan data ke database.</p>
+        <p>Pesan dari MySQL: <?php echo htmlspecialchars($pesan_db); ?></p>
+    <?php } ?>
+
+    <p><a href="javascript:history.back()">Kembali dan perbaiki data</a></p>
+</body>
+</html>
